@@ -5,6 +5,7 @@ from pathlib import Path
 import shutil
 import subprocess
 import re
+import shlex
 
 
 class TestCaseGrader:
@@ -66,40 +67,51 @@ class TestCaseGrader:
         package_name_set = {item['name'] for item in package_level_list}
         for i, row in enumerate(df.values):
             if df.iloc[i, df.columns.get_loc('level')] == 'P':
-               testcase_name = df.iloc[i, 1]+'.sh'
+               testcase_base = df.iloc[i, 1]
+               testcase_name = testcase_base +'.sh'
                for root, dirs, files in os.walk(testcases_dir):
                    for file in files:
                         if file == testcase_name:
                             filepath = os.path.join(root, file)
-                            with open(filepath, 'r', encoding='utf-8') as f:
-                                content = f.read()
-                                pattern = r'DNF_INSTALL\s+(.*?)(?=\s*(?:#|$|\n|;|&&|\|\||\\)|\Z)'
-                                matches = re.findall(pattern, content, re.DOTALL | re.MULTILINE)
-                                if len(matches) > 0:
-                                    pkgs_install = []
-                                    for match in matches:
-                                        parts = match.strip('"\'').split()
-                                        pkgs_install.extend(parts)
-                                    if not any(pkg in package_name_set for pkg in pkgs_install):
-                                        df.iloc[i, df.columns.get_loc('level')] = 'P2'
-                                        df.iloc[i, df.columns.get_loc('package')] = ' '.join(pkgs_install)
+                            try:
+                                with open(filepath, 'r', encoding='utf-8') as f:
+                                    content = f.read()
+                                    pattern = r'DNF_INSTALL\s+((?:\\\n|[^#;&|\n])+)(?=\s*(?:#|;|\||&|$))'
+                                    matches = re.findall(pattern, content, re.DOTALL | re.MULTILINE)
+                                    if len(matches) > 0:
+                                        pkgs_install = []
+                                        for match in matches:
+                                            parts = shlex.split(match)
+                                            filtered_parts = [p for p in parts if not p.isdigit()]
+                                            pkgs_install.extend(filtered_parts)
+                                        
+                                        filtered_pkgs = [pkg for pkg in pkgs_install if pkg in testcase_base]
+                                        if filtered_pkgs:
+                                            pkgs_install = filtered_pkgs
+                                        
+                                        if not any(pkg in package_name_set for pkg in pkgs_install):
+                                            df.iloc[i, df.columns.get_loc('level')] = 'P2'
+                                            df.iloc[i, df.columns.get_loc('package')] = ' '.join(pkgs_install)
+                                        else:
+                                            level_list = []
+                                            pkg_list = []
+                                            for pkg in pkgs_install:
+                                                level = level_dict.get(pkg)
+                                                if level:
+                                                    level_list.append(level)
+                                                    pkg_list.append(pkg)
+                                                    level_str = ' '.join(level_list)
+                                                    pkg_str = ' '.join(pkg_list)
+                                                    df.iloc[i, df.columns.get_loc('level')] = level_str
+                                                    df.iloc[i, df.columns.get_loc('package')] = pkg_str        
                                     else:
-                                        level_list = []
-                                        pkg_list = []
-                                        for pkg in pkgs_install:
-                                            level = level_dict.get(pkg)
-                                            if level:
-                                                level_list.append(level)
-                                                pkg_list.append(pkg)
-                                                level_str = ' '.join(level_list)
-                                                pkg_str = ' '.join(pkg_list)
-                                                df.iloc[i, df.columns.get_loc('level')] = level_str
-                                                df.iloc[i, df.columns.get_loc('package')] = pkg_str        
-                                else:
-                                    df.iloc[i, df.columns.get_loc('level')] = 'P1'
-                                    df.iloc[i, df.columns.get_loc('package')] = '系统功能测试'
-
+                                        df.iloc[i, df.columns.get_loc('level')] = 'P1'
+                                        df.iloc[i, df.columns.get_loc('package')] = '系统功能测试'
+                            except:
+                                print ('Cannot read ' + filepath)
+        
         print('new df>>>', df)
+        print(self.output_dir)
         df.to_excel(self.output_dir, index=False)     
         
 

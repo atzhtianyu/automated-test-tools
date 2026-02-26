@@ -1,4 +1,4 @@
 package_level_file = 'D:\\git\\github\\openeuler-riscv\\automated-test-tools\\assign-mugen-level\\oE2403SP3-packagelevel-20251202.xlsx'
-mugen_testcases_file = 'D:\\git\\github\\openeuler-riscv\\automated-test-tools\\assign-mugen-level\\24.03sp3_rva20_mugen.xlsx'
+mugen_testcases_file = 'D:\\git\\github\\openeuler-riscv\\automated-test-tools\\assign-mugen-level\\rva20-mugen-result.xlsx'
 mugen_dir = 'D:\\git\\atomgit\\mugen'
-output_file = 'D:\\git\\github\\openeuler-riscv\\automated-test-tools\\assign-mugen-level\\mugen_testcase_grades.xlsx'
+output_file = 'D:\\git\\github\\openeuler-riscv\\automated-test-tools\\assign-mugen-level\\mugen_testcase_rva20.xlsx'
