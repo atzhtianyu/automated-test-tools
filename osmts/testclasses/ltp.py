@@ -1,9 +1,11 @@
 import os
+import requests
+import shutil
+import subprocess
 from pathlib import Path
-import subprocess,shutil
 from openpyxl import Workbook
 
-from .errors import GitCloneError,DefaultError
+from .errors import GitCloneError, DefaultError
 
 """
 文档:https://blog.sina.com.cn/s/blog_7695e9f40100yjme.html
@@ -19,22 +21,38 @@ class Ltp:
         self.results_dir = Path('/opt/ltp/results')
         self.output_dir = Path('/opt/ltp/output')
 
+    def get_latest_ltp_version(self):
+        API_URL = "https://api.github.com/repos/linux-test-project/ltp/releases/latest"
+        headers = {"User-Agent": "LTP-Auto-Downloader"}
+        try:
+            response = requests.get(API_URL, headers=headers, timeout=10)
+            response.raise_for_status()
+            version = response.json()["tag_name"]
+            print(f"检测到最新LTP版本: {version}")
+            return version
+        except Exception as e:
+            print(f"获取最新LTP版本失败: {e}")
+            print("使用 master 分支")
+            return "master"
 
     def pre_test(self):
         if not self.directory.exists():
             self.directory.mkdir(exist_ok=True, parents=True)
         if self.path.exists():
             shutil.rmtree(self.path)
+
+        version = self.get_latest_ltp_version()
+
         try:
             subprocess.run(
-                "git clone https://gitee.com/zhtianyu/ltp.git",
+                f"git clone --depth 1 --branch {version} https://github.com/linux-test-project/ltp.git",
                 cwd = "/root/osmts_tmp",
                 shell=True,check=True,
                 stdout=subprocess.DEVNULL,
                 stderr=subprocess.PIPE,
             )
         except subprocess.CalledProcessError as e:
-            raise GitCloneError(e.returncode,'https://gitee.com/zhtianyu/ltp.git',e.stderr)
+            raise GitCloneError(e.returncode,'https://github.com/linux-test-project/ltp.git',e.stderr)
 
         try:
             subprocess.run(
@@ -77,23 +95,27 @@ class Ltp:
         ws = wb.active
         ws.title = 'ltp report'
         ws.append(['Testcase', 'Result', 'Exit Value'])
-        # 对/opt/ltp/results目录里的日志进行分析
-        for file in os.listdir(self.results_dir):
-            if '.log' in file:
-                with open(self.results_dir / file, 'r') as ltp_log:
-                    testcases = sorted(set(line.strip() for line in ltp_log.readlines() if
-                                           any(result in line for result in ('PASS', 'FAIL', 'CONF'))))
-                    for testcase in testcases:
-                        ws.append([item for item in testcase.split(' ') if item != ''])
-                    wb.save(self.directory / 'ltp.xlsx')
-            shutil.copy(self.results_dir / file,self.directory)
-            Path(self.results_dir / file).unlink()
+        for file in sorted(os.listdir(self.results_dir)):
+            if file.endswith('.log'):
+                with open(self.results_dir / file, errors="ignore") as f:
+                    for line in f:
+                        parts = line.split()
+                        if len(parts) >= 3 and parts[1] in ('PASS','FAIL','CONF'):
+                            ws.append(parts[:3])
 
-        # 复制/opt/ltp/output目录里的总结信息
+            shutil.copy(self.results_dir / file, self.directory)
+
+            if (self.results_dir / file).exists():
+                Path(self.results_dir / file).unlink()
+
+        wb.save(self.directory / 'ltp.xlsx')
+
+        # 复制 summary
         for file in os.listdir(self.output_dir):
             if 'LTP' in file:
-                shutil.copy(self.output_dir / file,self.directory)
-                Path(self.output_dir / file).unlink()
+                shutil.copy(self.output_dir / file, self.directory)
+                if (self.output_dir / file).exists():
+                    Path(self.output_dir / file).unlink()
 
 
     def run(self):
