@@ -149,7 +149,36 @@ class MMTests:
         self.wb = Workbook()
         self.ws = self.wb.active
         self.ws.title = 'MMTests'
-        self.ws.append(['config','返回值','运行时间'])
+        self.ws.append(['config','测试结果','返回值','失败原因','运行时间','日志文件'])
+
+
+    # 从命令输出中提取关键失败原因行，返回码为 0 时返回空字符串
+    def _extract_failure_reason(self, output: str, returncode: int) -> str:
+        if returncode == 0:
+            return ''
+        if not output or not output.strip():
+            return f'返回码非0({returncode})，且日志为空'
+
+        keywords = (
+            'FAILED',
+            'FAIL',
+            'ERROR',
+            'error:',
+            'not found',
+            'No such file or directory',
+            'Command exited with non-zero status',
+            'unsupported',
+            'Permission denied',
+            'Cannot',
+            'timed out',
+            'Traceback',
+        )
+
+        lines = [line.strip() for line in output.splitlines() if line.strip()]
+        for line in reversed(lines):
+            if any(keyword in line for keyword in keywords):
+                return line[:300]
+        return f'返回码非0({returncode})，请查看日志'
 
 
 
@@ -247,14 +276,14 @@ class MMTests:
             shutil.rmtree(self.path, ignore_errors=True)
             try:
                 subprocess.run(
-                    "git clone https://gitee.com/zhtianyu/mmtests.git",
+                    "git clone https://github.com/gormanm/mmtests.git",
                     cwd="/root/osmts_tmp/",
                     shell=True,check=True,
                     stdout=subprocess.DEVNULL,
                     stderr=subprocess.PIPE,
                 )
             except subprocess.CalledProcessError as e:
-                raise GitCloneError(e.returncode,'https://gitee.com/zhtianyu/mmtests.git'.stderr.decode('utf-8'))
+                raise GitCloneError(e.returncode,'https://github.com/gormanm/mmtests.git'.stderr.decode('utf-8'))
 
 
 
@@ -273,6 +302,7 @@ class MMTests:
 
     def mmtests_each_test(self,config):
         start = time.time()
+        log_path = self.logs / f"{config}.log"
         try:
             run_mmtests = subprocess.run(
                 f"./run-mmtests.sh --no-monitor --config configs/{config} {config}",
@@ -282,10 +312,31 @@ class MMTests:
                 stderr=subprocess.STDOUT,
             )
         except subprocess.TimeoutExpired:
-            return (config,'/','超时')
-        with open(self.logs / f"{config}.log", "w") as log:
-            log.write(run_mmtests.stdout.decode('utf-8'))
-        return (config,run_mmtests.returncode,humanfriendly.format_timespan(time.time() - start))
+            with open(log_path, "w", encoding="utf-8") as log:
+                log.write('mmtests执行超时')
+            return (
+                config,
+                '失败',
+                '/',
+                '超时',
+                '超时',
+                f'logs/{config}.log'
+            )
+
+        output = run_mmtests.stdout.decode('utf-8', errors='replace')
+        with open(log_path, "w", encoding="utf-8") as log:
+            log.write(output)
+
+        result = '成功' if run_mmtests.returncode == 0 else '失败'
+        reason = self._extract_failure_reason(output, run_mmtests.returncode)
+        return (
+            config,
+            result,
+            run_mmtests.returncode,
+            reason,
+            humanfriendly.format_timespan(time.time() - start),
+            f'logs/{config}.log'
+        )
 
 
     def run_test(self):

@@ -3,7 +3,7 @@ import subprocess
 import os
 from pathlib import Path
 
-from .errors import GitCloneError
+from .errors import DefaultError, GitCloneError
 
 
 class APISanityChecker:
@@ -14,6 +14,56 @@ class APISanityChecker:
         self.api_sanity_checker = Path('/root/osmts_tmp/api-sanity-checker')
         self.directory: Path = kwargs.get('saved_directory') / 'api_sanity_checker'
         self.gcc_version = kwargs.get('gcc_version','auto')
+        self.gcc_target = ''
+        self.gcc_lib_dir = Path()
+        self.version = ''
+
+
+    # 生成版本字符串的排序键，数字段按数值大小排序，字母段按字典序
+    def _version_sort_key(self, version: str):
+        sort_key = []
+        for part in version.replace('-', '.').split('.'):
+            if part.isdigit():
+                sort_key.append((0, int(part)))
+            else:
+                sort_key.append((1, part))
+        return tuple(sort_key)
+
+
+    # 通过 gcc -dumpmachine 获取目标架构并定位 gcc 库目录
+    def _resolve_gcc_version(self):
+        gcc_target = subprocess.run(
+            "gcc -dumpmachine",
+            shell=True,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+        )
+        if gcc_target.returncode != 0:
+            raise DefaultError(f"api-sanity-checker测试出错.获取gcc目标架构失败,报错信息:{gcc_target.stderr.decode('utf-8')}")
+
+        self.gcc_target = gcc_target.stdout.decode('utf-8', errors='replace').strip()
+        if not self.gcc_target:
+            raise DefaultError("api-sanity-checker测试出错.gcc -dumpmachine未返回有效的目标架构")
+
+        self.gcc_lib_dir = Path('/usr/lib/gcc') / self.gcc_target
+        if not self.gcc_lib_dir.exists():
+            raise DefaultError(f"api-sanity-checker测试出错.{self.gcc_lib_dir}目录不存在")
+
+        available_versions = sorted(
+            [path.name for path in self.gcc_lib_dir.iterdir() if path.is_dir()],
+            key=self._version_sort_key,
+            reverse=True,
+        )
+        if not available_versions:
+            raise DefaultError(f"api-sanity-checker测试出错.{self.gcc_lib_dir}目录下未找到gcc版本")
+
+        if self.gcc_version != 'auto':
+            if (self.gcc_lib_dir / self.gcc_version).exists():
+                self.version = self.gcc_version
+                return
+            print(f"用户输入的gcc_version={self.gcc_version}无效,试图自动查找")
+
+        self.version = available_versions[0]
 
 
     def pre_test(self):
@@ -75,24 +125,12 @@ class APISanityChecker:
             print('osmts继续运行')
 
         # 生成GCC_VERSION.xml
-        lib = Path('/usr/lib/gcc/riscv64-openEuler-linux')
-        if self.gcc_version == 'auto':
-            try:
-                self.version = os.listdir(lib)[0]
-            except FileNotFoundError:
-                print("/usr/lib/gcc/riscv64-openEuler-linux/目录下未找到gcc版本")
-        else:
-            if not (lib / self.gcc_version).exists():
-                print(f"用户输入的gcc_version={self.gcc_version}无效,试图自动查找")
-                try:
-                    self.version = os.listdir(lib)[0]
-                except FileNotFoundError:
-                    print("/usr/lib/gcc/riscv64-openEuler-linux/目录下未找到gcc版本")
+        self._resolve_gcc_version()
 
         with open(f"{self.directory}/GCC_VERSION.xml",'w') as file:
             file.writelines(['<version>\n',f'\t{self.version}\n','</version>\n'])
-            file.writelines(['<headers>\n',f'\t{lib}/{self.version}/include\n','</headers>\n'])
-            file.writelines(['<libs>\n',f'\t{lib}/{self.version}\n','</libs>'])
+            file.writelines(['<headers>\n',f'\t{self.gcc_lib_dir}/{self.version}/include\n','</headers>\n'])
+            file.writelines(['<libs>\n',f'\t{self.gcc_lib_dir}/{self.version}\n','</libs>'])
 
 
     def run_test(self):

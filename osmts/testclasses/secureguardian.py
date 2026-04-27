@@ -1,8 +1,10 @@
 import re
 import shutil
 import subprocess
+import json
 from pathlib import Path
 from openpyxl import Workbook
+from openpyxl.styles import Alignment
 
 from .errors import DefaultError,RunError,SummaryError
 
@@ -13,6 +15,53 @@ class SecureGuardian:
         self.path = kwargs.get('/root/osmts_tmp/secureguardian')
         self.directory: Path = kwargs.get('saved_directory') / 'secureguardian'
         self.test_result = ''
+
+
+    # 解析 secureguardian 输出的单行 JSON 检查项，解析失败时用正则兜底
+    def _parse_check_line(self, line: str):
+        line = line.strip().rstrip(',')
+        if not line or line in ('[', ']'):
+            return None
+
+        try:
+            return json.loads(line, strict=False)
+        except json.JSONDecodeError:
+            pass
+
+        pattern = re.compile(
+            r'^\{"id":"(?P<id>.*?)","description":"(?P<description>.*?)","level":\s*"(?P<level>.*?)","status":"(?P<status>.*?)","details":"(?P<details>.*)","link":"(?P<link>[^"]*)"\}$'
+        )
+        match = pattern.match(line)
+        if not match:
+            raise ValueError(f'无法解析secureguardian结果行: {line[:200]}')
+
+        return {
+            'id': match.group('id'),
+            'description': match.group('description'),
+            'level': match.group('level'),
+            'status': match.group('status'),
+            'details': match.group('details'),
+            'link': match.group('link'),
+        }
+
+
+    # 当逐行解析失败时，用正则从整体输出中批量提取所有检查项
+    def _extract_checks_fallback(self, content: str):
+        pattern = re.compile(
+            r'\{"id":"(?P<id>.*?)","description":"(?P<description>.*?)","level":\s*"(?P<level>.*?)","status":"(?P<status>.*?)","details":"(?P<details>.*?)","link":"(?P<link>[^"]*)"\}',
+            re.DOTALL,
+        )
+        checks = []
+        for match in pattern.finditer(content):
+            checks.append({
+                'id': match.group('id'),
+                'description': match.group('description'),
+                'level': match.group('level'),
+                'status': match.group('status'),
+                'details': match.group('details'),
+                'link': match.group('link'),
+            })
+        return checks
 
 
     def pre_test(self):
@@ -47,12 +96,71 @@ class SecureGuardian:
 
 
     def result2summary(self):
+        json_path = self.directory / 'all_checks.results.json'
+        with open(json_path, 'r', encoding='utf-8') as file:
+            content = file.read()
+
+        sanitized_content = content.replace('\x00', '')
+        sanitized_content = ''.join(
+            ch for ch in sanitized_content
+            if ch in ('\n', '\r', '\t') or ord(ch) >= 32
+        )
+
+        if not sanitized_content.strip():
+            raise ValueError('all_checks.results.json内容为空')
+
+        checks = None
+        parse_errors = []
+
+        for candidate in (content, sanitized_content):
+            try:
+                checks = json.loads(candidate, strict=False)
+                break
+            except json.JSONDecodeError as e:
+                parse_errors.append(str(e))
+
+        if checks is None:
+            checks = self._extract_checks_fallback(sanitized_content)
+
+        if not isinstance(checks, list):
+            raise ValueError('all_checks.results.json不是预期的列表结构')
+        if not checks:
+            error_text = '; '.join(parse_errors) if parse_errors else '未知解析错误'
+            raise ValueError(f'all_checks.results.json解析失败: {error_text}')
+
         wb = Workbook()
         ws = wb.active
         ws.title = 'secureguardian'
+        ws.append(['id', 'description', 'level', 'riscv status', 'riscv details', 'link'])
 
-        for version,status in re.findall(r"检查 (\d+\.\d+\.\d+) 执行完成：(成功|失败)", self.test_result):
-            ws.append([version,status])
+        for check in checks:
+            details = check.get('details', '')
+            details = re.sub(r'<br\s*/?>', '\n', details, flags=re.IGNORECASE)
+            ws.append([
+                check.get('id', ''),
+                check.get('description', ''),
+                check.get('level', ''),
+                check.get('status', ''),
+                details,
+                check.get('link', ''),
+            ])
+
+        ws.freeze_panes = 'A2'
+        for row in ws.iter_rows():
+            for cell in row:
+                cell.alignment = Alignment(vertical='top', wrap_text=True)
+
+        widths = {
+            'A': 12,
+            'B': 36,
+            'C': 10,
+            'D': 14,
+            'E': 80,
+            'F': 48,
+        }
+        for column, width in widths.items():
+            ws.column_dimensions[column].width = width
+
         wb.save(self.directory / 'secureguardian.xlsx')
 
 

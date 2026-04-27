@@ -25,8 +25,8 @@ class Iozone:
         # 获取iozone的源码
         try:
             subprocess.run(
-                "wget https://www.iozone.org/src/current/iozone3_506.tar && "
-                "tar -xf iozone3_506.tar",
+                "wget https://www.iozone.org/src/current/iozone3_508.tar && "
+                "tar -xf iozone3_508.tar",
                 cwd=self.path,
                 shell=True,check=True,
                 stdout=subprocess.DEVNULL,
@@ -40,7 +40,7 @@ class Iozone:
         try:
             compile = subprocess.run(
                 f"make clean && make CC={self.compiler} CFLAGS=-fcommon linux",
-                cwd="/root/osmts_tmp/iozone/iozone3_506/src/current",
+                cwd="/root/osmts_tmp/iozone/iozone3_508/src/current",
                 shell=True,check=True,
                 stdout=subprocess.DEVNULL,
                 stderr=subprocess.PIPE
@@ -53,7 +53,7 @@ class Iozone:
         try:
             subprocess.run(
                 f"./iozone -Rab {self.directory}/iozone.xls",
-                cwd="/root/osmts_tmp/iozone/iozone3_506/src/current",
+                cwd="/root/osmts_tmp/iozone/iozone3_508/src/current",
                 shell=True,check=True,
                 stdout=subprocess.DEVNULL,
                 stderr=subprocess.PIPE

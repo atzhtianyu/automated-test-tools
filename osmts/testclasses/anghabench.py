@@ -11,7 +11,7 @@ class AnghaBench:
     def __init__(self, **kwargs):
         self.rpms = set()
         self.believe_tmp:bool = kwargs.get('believe_tmp')
-        self.path = Path('/root/osmts_tmp/AnghaBench')
+        self.path = Path('/root/osmts_tmp/angha-bench')
         self.directory: Path = kwargs.get('saved_directory') / 'anghabench'
         self.log_files:Path = self.directory / 'log_files'
         self.matches:list = []
@@ -26,7 +26,7 @@ class AnghaBench:
 
         self.ws.cell(1,1,"AnghaBench测试中编译未通过项目汇总")
         self.ws.merge_cells("A1:B1")
-        self.ws.append(['c文件名','日志文件'])
+        self.ws.append(['文件名','日志文件'])
 
 
     def pre_test(self):

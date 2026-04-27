@@ -118,6 +118,7 @@ class Yarpgen:
         ws.title = 'yarpgen'
         ws.append(['请进入/root/osmts_tmp/yarpgen/testdir查看所有结果'])
         ws.append(['出错项目id','出错原因'])
+        failed_logs = []
 
         with ThreadPoolExecutor(max_workers=os.cpu_count()) as pool:
             results = list(tqdm(pool.map(self.create_source_code_and_run, range(1, self.yarpgen_count + 1)),total=self.yarpgen_count))
@@ -127,8 +128,18 @@ class Yarpgen:
                 else:
                     self.failed += 1
                     ws.append([result.get('id',"获取id失败"),result.get('reason','原因未知')])
+                    failed_logs.append(result.get('id'))
         ws.append(["计数统计",f"passwd数量:{self.passed}",f"failed数量:{self.failed}"])
         wb.save(self.directory / 'yarpgen.xlsx')
+
+        if failed_logs:
+            import zipfile
+            zip_path = self.directory / 'yarpgen_error_logs.zip'
+            with zipfile.ZipFile(zip_path, 'w', zipfile.ZIP_DEFLATED) as zf:
+                for fid in failed_logs:
+                    log_path = self.testdir / str(fid) / 'error.log'
+                    if log_path.exists():
+                        zf.write(log_path, f'{fid}_error.log')
 
 
     def run(self):

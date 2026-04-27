@@ -62,14 +62,14 @@ class Csmith:
 
         try:
             subprocess.run(
-                "git clone https://gitcode.com/qq_61653333/csmith.git -b master",
+                "git clone https://github.com/csmith-project/csmith.git -b master",
                 cwd="/root/osmts_tmp/",
                 shell=True,check=True,
                 stdout=subprocess.DEVNULL,
                 stderr=subprocess.PIPE,
             )
         except subprocess.CalledProcessError as e:
-            raise GitCloneError(e.returncode,'https://gitcode.com/qq_61653333/csmith.git',e.stderr.decode('utf-8'))
+            raise GitCloneError(e.returncode,'https://github.com/csmith-project/csmith.git',e.stderr.decode('utf-8'))
 
 
         try:
@@ -94,7 +94,6 @@ class Csmith:
 
 
     def check_each_csmith(self,id:int) -> tuple:
-        # 超过10秒则跳过(生成的c代码要求算力太大,不符合测试条件)
         gcc = subprocess.run(
             f"timeout 10 {self.directory}/bin/csmith{id}_gcc",
             shell=True,
@@ -107,9 +106,20 @@ class Csmith:
             stdout=subprocess.PIPE,
             stderr=subprocess.DEVNULL
         )
+        if gcc.returncode == 124 or clang.returncode == 124:
+            return (id, None, None, "跳过(执行超时)")
         if gcc.returncode != 0 or clang.returncode != 0:
-            return (id,None,None)
-        return (id,gcc.stdout.decode('utf-8'), clang.stdout.decode('utf-8'))
+            reason = None
+            if gcc.returncode < 0:
+                reason = f"gcc运行时崩溃(信号{-gcc.returncode})"
+            elif gcc.returncode > 0:
+                reason = f"gcc执行异常退出(返回码{gcc.returncode})"
+            if clang.returncode < 0:
+                reason = f"{reason}, " if reason else "" + f"clang运行时崩溃(信号{-clang.returncode})"
+            elif clang.returncode > 0:
+                reason = f"{reason}, " if reason else "" + f"clang执行异常退出(返回码{clang.returncode})"
+            return (id, None, None, reason)
+        return (id, gcc.stdout.decode('utf-8'), clang.stdout.decode('utf-8'), None)
 
 
     def run_test(self):
@@ -129,10 +139,10 @@ class Csmith:
 
             # 获取返回值
             for future in tqdm(as_completed(futures),total=self.csmith_count,desc="csmith完成进度"):
-                line,gcc_checksum,clang_checksum = future.result()
+                line,gcc_checksum,clang_checksum,reason = future.result()
                 line += 1
                 if gcc_checksum is None and clang_checksum is None:
-                    ws.cell(line, 2, "程序运行超时,不符合条件")
+                    ws.cell(line, 2, reason)
                 elif gcc_checksum == clang_checksum:
                     ws.cell(line, 2, "是")
                 else:

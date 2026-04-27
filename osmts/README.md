@@ -128,21 +128,20 @@ compare_device = ["sg2042"]
 
 
 ## 注意事项
-1. 进行ltp测试期间机器可能会ssh连不上,在sg2042上这很正常,机器并没有崩溃,耐心等待几天不要重启机器,否则丢失运行结果.如果对机器状态有疑惑可以连上串口查看是否kernel panic.
-2. ltp_cve实际上已经被包含在了ltp里,在ltp存在的情况下可以不测试ltp_cve.
-3. ltp_stress测试执行时接收SIGINT会清理子进程.
-4. 若待测机器的/分区剩余容量过小,osmts会报错,避免因fio下载文件导致文件系统崩溃.
-5. gpgcheck测试中会下载大量的rpm包,为加快速度,需要修改/etc/dnf/dnf.conf,添加一行max_parallel_downloads=20,并行下载rpm包,但这个数字不要太大否则会报Error: Bad value of LRO_MAXPARALLELDOWNLOADS
-错误;
-6. 部分测试用到了asyncio协程,从目前的结果来看不建议使用uvloop调度器;
-7. 如果进行mysql或postresql数据库的测试,把数据库的登陆密码设置为无密码或者123456,osmts运行后数据库密码会设置为123456;
-8. osmts使用时必须带有dbus,Python版本应为3.9以上,机器在测试期间不要作其他用途.
+1. 进行ltp测试期间机器可能因为 kernel panic 导致 ssh 连不上，可以连上串口查看是否kernel panic.
+2. ltp_cve 实际上已经被包含在了 ltp 里，在 ltp 存在的情况下可以不测试 ltp_cve.
+3. ltp_stress 测试执行时接收 SIGINT 会清理子进程.
+4. 若待测机器的/分区剩余容量过小，osmts 会报错，避免因 fio 等下载文件导致文件系统崩溃.
+5. gpgchec k测试中会下载大量的 rpm 包，为加快速度，可以修改/etc/dnf/dnf.conf，添加一行 max_parallel_downloads=20，并行下载 rpm 包，但这个数字不要太大否则会报 Error: Bad value of LRO_MAXPARALLELDOWNLOADS 错误;
+6. 部分测试用到了 asyncio 协程，从目前的结果来看不建议使用 uvloop 调度器;
+7. 如果进行 mysql 或 postgresql 数据库的测试，把数据库的登陆密码设置为无密码或者 123456，osmts 运行后数据库密码会设置为 123456;
+8. osmts 使用时必须带有 dbus，Python 版本应为 3.9 以上，机器在测试期间不要作其他用途.
 
 ---
 ## 未来计划
 1. 开发更多测试脚本进行汇总;
 2. 对已有的测试结果进行审查看是否有数据遗漏;
-3. osmts项目在sg2042 Milk-V Pioneer和Sipeed Lichee pi 4A开发板上检测通过,在其他设备上待测试.
+3. osmts 项目在 sg2042 Milk-V Pioneer 和 Sipeed Lichee pi 4A 开发板上检测通过,在其他设备上待测试.
 
 
 ---
@@ -154,14 +153,16 @@ fio测试类的输出结果如图所示:
 ![fio总结为excel的截图](https://gitee.com/April_Zhao/images/raw/master/osmts/fio_excel.png)
 
 lmbench测试类的输出结果如图所示:
-![netperf总结为excel的截图](https://gitee.com/April_Zhao/images/raw/master/osmts/lmbench_excel.png)
+![lmbench总结为excel的截图](https://gitee.com/April_Zhao/images/raw/master/osmts/lmbench_excel.png)
 
 unixbench测试类的输出结果如图所示:
 ![unixbench总结为excel的截图](https://gitee.com/April_Zhao/images/raw/master/osmts/unixbench_excel.png)
 
 ltp_stress测试类的输出结果如图所示:
-![ltp_stress总结为excel的截图](https://gitee.com/April_Zhao/images/raw/master/osmts/ltp_stress_excel.png)
+![ltp_stress提取为excel的截图](https://raw.giteeusercontent.com/zhtianyu/images/raw/master/ltp_stress_excel.png)
 _可以对excel文件中Result列进行筛选获取到其中FAIL的项目_
+
+[ltp_stress总结excel的截图](https://raw.giteeusercontent.com/zhtianyu/images/raw/master/ltp_stress_summary.png)
 
 ![ltp_stress_iodata总结为excel的截图](https://gitee.com/April_Zhao/images/raw/master/osmts/ltp_stress_iodata.png)
 
@@ -181,22 +182,19 @@ wrk测试类的输出结果如图所示:
 ![wrk总结为excel的截图](https://gitee.com/April_Zhao/images/raw/master/osmts/wrk_excel.png)
 
 mmtests测试类的输出结果如图所示:
-![mmtests总结为excel的截图](https://gitee.com/April_Zhao/images/raw/master/osmts/mmtests_excel.png)
+![mmtests总结为excel的截图](https://raw.giteeusercontent.com/zhtianyu/images/raw/master/mmtests_excel.png)
 
 ycsb测试类的输出结果如图所示:
-![ycsb总结为excel的截图](https://gitee.com/April_Zhao/images/raw/master/osmts/ycsb_excel.png)
+![ycsb总结为excel的截图](https://raw.giteeusercontent.com/zhtianyu/images/raw/master/ycsb_excel.png)
 
 redis_benchmark测试类的输出结果如图所示:
-![redis_benchmark总结为excel的截图](https://gitee.com/April_Zhao/images/raw/master/osmts/redis_benchmark_excel.png)
+![redis_benchmark总结为excel的截图](https://raw.giteeusercontent.com/zhtianyu/images/raw/master/redis-benchmark_excel.png)
 
 sysbench测试类的输出结果如图所示:
-![sysbench总结为excel的截图](https://gitee.com/April_Zhao/images/raw/master/osmts/sysbench_excel.png)
+![sysbench总结为excel的截图](https://raw.giteeusercontent.com/zhtianyu/images/raw/master/sysbench_excel.png)
 
 tpch测试类的输出结果如图所示:
-
-
-
-![tpch总结为excel的截图](https://gitee.com/April_Zhao/images/raw/master/osmts/tpch_excel.png)
+![tpch总结为excel的截图](https://raw.giteeusercontent.com/zhtianyu/images/raw/master/tpch_excel.png)
 
 ---
 

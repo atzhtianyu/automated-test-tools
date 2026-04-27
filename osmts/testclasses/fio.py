@@ -32,7 +32,7 @@ class Fio:
                 "headers" : {
                 'Connection': 'keep-alive',
                 # User-Agent会自动生成
-                'Referer': 'https://gitee.com/April_Zhao/osmts'
+                'Referer': 'https://gitee.com/zhtianyu/osmts'
                 }
             }
         )

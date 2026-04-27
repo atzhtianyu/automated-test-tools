@@ -6,7 +6,7 @@ from .errors import GitCloneError,RunError,DefaultError
 
 class Llvmcase():
     def __init__(self, **kwargs):
-        self.rpms = {'gcc-g++', 'gcc-gfortran', 'cmake', 'ninja-build'}
+        self.rpms = {'gcc', 'gcc-g++', 'gcc-gfortran', 'cmake', 'ninja-build'}
         self.believe_tmp: bool = kwargs.get('believe_tmp')
         self.path = Path('/root/osmts_tmp/llvm-project')
         self.directory: Path = kwargs.get('saved_directory') / 'llvmcase'
@@ -33,8 +33,8 @@ class Llvmcase():
 
         # 编译llvm
         try:
-            build_llvm = subprocess.run(
-                args='mkdir build && cd build && cmake -DLLVM_PARALLEL_LINK_JOBS=3 -DLLVM_ENABLE_PROJECTS="clang" -DLLVM_TARGETS_TO_BUILD="RISCV" -DCMAKE_BUILD_TYPE="Release" -G Ninja ../llvm && ninja',
+            subprocess.run(
+                args='cmake -S llvm -B build -DLLVM_PARALLEL_LINK_JOBS=3 -DLLVM_ENABLE_PROJECTS="clang" -DLLVM_TARGETS_TO_BUILD="RISCV" -DCMAKE_BUILD_TYPE="Release" -G Ninja && ninja -C build',
                 cwd=self.path,
                 shell=True,check=True,
                 stdout=subprocess.DEVNULL,
@@ -47,8 +47,8 @@ class Llvmcase():
     def run_test(self):
         try:
             run_clang = subprocess.run(
-                "clang -v",
-                cwd="/root/osmts_tmp/llvm-project/build/bin",
+                "bin/clang -v",
+                cwd=self.path / "build",
                 shell=True,check=True,
                 stdout=subprocess.PIPE,
                 stderr=subprocess.STDOUT

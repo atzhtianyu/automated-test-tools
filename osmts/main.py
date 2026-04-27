@@ -169,7 +169,26 @@ def parse_config(config:dict) -> dict:
     believe_tmp: bool = bool(config.get("believe_tmp", None))
     gcc_version: str = str(config.get("gcc_version", "auto"))
     wrk_seconds: int = int(config.get("wrk_seconds", 60))
+    wrk_url: str = str(config.get("wrk_url", "http://www.baidu.com"))
     sha256sumISO:str = str(config.get("sha256sumISO", ""))
+    sysbench_table_size: int = int(config.get("sysbench_table_size", 100000))
+    sysbench_tables: int = int(config.get("sysbench_tables", 16))
+    sysbench_time: int = int(config.get("sysbench_time", 60))
+    sysbench_threads: int = int(config.get("sysbench_threads", min(os.cpu_count() or 1, 4)))
+    sysbench_prepare_threads: int = int(config.get("sysbench_prepare_threads", sysbench_threads))
+    benchmarksql_java_heap_mb: int = int(config.get("benchmarksql_java_heap_mb", 512))
+    benchmarksql_mysql_warehouses: int = int(config.get("benchmarksql_mysql_warehouses", 5))
+    benchmarksql_mysql_load_workers: int = int(config.get("benchmarksql_mysql_load_workers", 4))
+    benchmarksql_mysql_terminals: int = int(config.get("benchmarksql_mysql_terminals", 2))
+    benchmarksql_mysql_run_txns_per_terminal: int = int(config.get("benchmarksql_mysql_run_txns_per_terminal", 0))
+    benchmarksql_mysql_run_mins: int = int(config.get("benchmarksql_mysql_run_mins", 10))
+    benchmarksql_mysql_limit_txns_per_min: int = int(config.get("benchmarksql_mysql_limit_txns_per_min", 1000000000))
+    benchmarksql_postgres_warehouses: int = int(config.get("benchmarksql_postgres_warehouses", 1))
+    benchmarksql_postgres_load_workers: int = int(config.get("benchmarksql_postgres_load_workers", 4))
+    benchmarksql_postgres_terminals: int = int(config.get("benchmarksql_postgres_terminals", 1))
+    benchmarksql_postgres_run_txns_per_terminal: int = int(config.get("benchmarksql_postgres_run_txns_per_terminal", 10))
+    benchmarksql_postgres_run_mins: int = int(config.get("benchmarksql_postgres_run_mins", 0))
+    benchmarksql_postgres_limit_txns_per_min: int = int(config.get("benchmarksql_postgres_limit_txns_per_min", 300))
     compare: bool = bool(config.get("compare", None))
     os_version: str = str(config.get("os_version", ""))
     compare_version: str = str(config.get("compare_version", ""))
@@ -226,7 +245,26 @@ def parse_config(config:dict) -> dict:
         'yarpgen_count' : yarpgen_count,
         'gcc_version' : gcc_version,
         'wrk_seconds' : wrk_seconds,
+        'wrk_url' : wrk_url,
         'sha256sumISO':sha256sumISO,
+        'sysbench_table_size': sysbench_table_size,
+        'sysbench_tables': sysbench_tables,
+        'sysbench_time': sysbench_time,
+        'sysbench_threads': sysbench_threads,
+        'sysbench_prepare_threads': sysbench_prepare_threads,
+        'benchmarksql_java_heap_mb': benchmarksql_java_heap_mb,
+        'benchmarksql_mysql_warehouses': benchmarksql_mysql_warehouses,
+        'benchmarksql_mysql_load_workers': benchmarksql_mysql_load_workers,
+        'benchmarksql_mysql_terminals': benchmarksql_mysql_terminals,
+        'benchmarksql_mysql_run_txns_per_terminal': benchmarksql_mysql_run_txns_per_terminal,
+        'benchmarksql_mysql_run_mins': benchmarksql_mysql_run_mins,
+        'benchmarksql_mysql_limit_txns_per_min': benchmarksql_mysql_limit_txns_per_min,
+        'benchmarksql_postgres_warehouses': benchmarksql_postgres_warehouses,
+        'benchmarksql_postgres_load_workers': benchmarksql_postgres_load_workers,
+        'benchmarksql_postgres_terminals': benchmarksql_postgres_terminals,
+        'benchmarksql_postgres_run_txns_per_terminal': benchmarksql_postgres_run_txns_per_terminal,
+        'benchmarksql_postgres_run_mins': benchmarksql_postgres_run_mins,
+        'benchmarksql_postgres_limit_txns_per_min': benchmarksql_postgres_limit_txns_per_min,
         'compare':compare,
         'os_version':os_version,
         'compare_version':compare_version,
